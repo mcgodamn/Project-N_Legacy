@@ -10,8 +10,15 @@ public class GameManager : NetworkManager {
     public int NowPlayer;
     public bool Gaming;
     public int port;
-    public string Name;
-    public GameObject menu, IpAddress, InGame, PlayerName, InGameText;
+    public string Name,LastAttackPlayer;
+    public GameObject menu, IpAddress, InGame, PlayerName, InGameText, MyCharacter,Count,CountText;
+	public GameObject character;
+	public bool solo;
+	GameObject p1, p2;
+	SpriteRenderer p1color,p2color;
+	Coroutine Stand;
+	float StartTime;
+	public Color FadeInColor;
     // Use this for initialization
     void Start ()
     {
@@ -20,7 +27,10 @@ public class GameManager : NetworkManager {
         DontDestroyOnLoad(this);
         player = true; Gaming = false;
         menu.SetActive(true);
+		solo = false;
+		FadeInColor = new Color (1, 1, 1, 0);
     }
+
     public void Exit()
     {
         Application.Quit();
@@ -64,8 +74,12 @@ public class GameManager : NetworkManager {
 
     public void ReGameButton()
     {
-        GameObject player = GameObject.FindGameObjectWithTag("1p");
-        player.GetComponent<CharController>().RestartGame();
+		if (!solo)
+			MyCharacter.GetComponent<CharController> ().RestartGame ();
+		else {
+			SoloMode ();
+			InGame.SetActive (false);
+		}
     }
 
     public void ReGame()
@@ -78,6 +92,71 @@ public class GameManager : NetworkManager {
         player[0].GetComponent<CharController>().Start();
         player[1].GetComponent<player>().Start();
         player[1].GetComponent<CharController>().Start();
-        Gaming = true;
+		StartCoroutine(StartCount ());
     }
+
+	public void SoloMode()
+	{
+		menu.SetActive (false);
+		GetComponent<SoloMode> ().enabled = true;
+		if (solo) {
+			p1 = GameObject.FindGameObjectWithTag ("1p");
+			p2 = GameObject.FindGameObjectWithTag ("2p");
+			p1.transform.position = new Vector3 (-4, -3.565f, 0);
+			p2.transform.position = new Vector3 (4, -3.565f, 0);
+		} else {
+			p1 = (GameObject)Instantiate(character, new Vector3(-4, -3.565f, 0), new Quaternion());
+			p2 = (GameObject)Instantiate(character, new Vector3(4, -3.565f, 0), new Quaternion());
+		}
+		p1color = p1.GetComponent<SpriteRenderer> ();
+		p2color = p2.GetComponent<SpriteRenderer> ();
+		StartTime = Time.time;
+		if(!solo)StartCoroutine (FadeIn());
+		solo = true;
+		p1.GetComponent<player> ().enabled = false;
+		p2.GetComponent<player> ().enabled = false;
+		p1.GetComponent<CharController> ().enabled = false;
+		p2.GetComponent<CharController> ().enabled = false;
+		GetComponent<SoloMode> ().AsignPlayer (p1, p2);
+		StartCoroutine(StartCount ());
+		//Stand = StartCoroutine (standup ());
+	}
+	public IEnumerator standup()
+	{
+		while (true) {
+			GetComponent<SoloMode> ().stand ();
+			GetComponent<SoloMode> ().stand2 ();
+		}
+		yield return 0;
+	}
+
+	public IEnumerator StartCount()
+	{
+		yield return new WaitForSeconds (0.7f);
+		Count.SetActive (true);
+		CountText.GetComponent<Text> ().text = 3 +"";
+		float now = Time.time;
+		for (int i = 2; i > -1; i--) {
+			//if (i == 1)
+				//StopCoroutine (Stand);
+			yield return new WaitForSeconds(1);
+			CountText.GetComponent<Text> ().text = i +"";
+		}
+		Count.SetActive (false);
+		Gaming = true;
+	}
+
+	public IEnumerator FadeIn()
+	{
+		while (true) {
+			FadeInColor.a = (Time.time - StartTime) / 3;
+			if (FadeInColor.a > 1)
+				break;
+			p1color.color = FadeInColor;
+			p2color.color = FadeInColor;
+			yield return null;
+		}
+		p1color.color = Color.white;
+		p2color.color = Color.white;
+	}
 }

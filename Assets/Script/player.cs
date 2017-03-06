@@ -11,7 +11,7 @@ public class player : MonoBehaviour {
     public Sprite[] PlayerSprite;
     public Sprite BasicSprite;
     public int ci;
-    public bool slashing;
+    public bool slashing,attacking;
     public Vector2 moveDirection;
     CharacterController controller;
     LineRenderer lr;
@@ -21,25 +21,31 @@ public class player : MonoBehaviour {
         lr = GetComponent<LineRenderer>();
         controller = GetComponent<CharacterController>();
         PlayerSprite = Resources.LoadAll<Sprite>("");
+		if (GameManager.Instance.player)
+		{
+			GetComponent<LineRenderer> ().startColor = Color.red;
+			GetComponent<LineRenderer> ().endColor = Color.red; 
+			PlayerNum = true;
+			GameManager.Instance.player = !GameManager.Instance.player;
+			Num = 1;
+			tag = "1p";
+		}
+		else
+		{
+			GetComponent<LineRenderer> ().startColor = Color.blue;
+			GetComponent<LineRenderer> ().endColor = Color.blue;
+			PlayerNum = false;
+			GameManager.Instance.player = !GameManager.Instance.player;
+			Num = 2;
+			tag = "2p";
+		}
+		GameManager.Instance.MyCharacter = gameObject;
     }
     public void Start ()
     {
+		attacking = false;
         slashing = false;
         WalkReturn = true;
-        if (GameManager.Instance.player)
-        {
-            PlayerNum = true;
-            GameManager.Instance.player = !GameManager.Instance.player;
-            Num = 1;
-            tag = "1p";
-        }
-        else
-        {
-            PlayerNum = false;
-            GameManager.Instance.player = !GameManager.Instance.player;
-            Num = 2;
-            tag = "2p";
-        }
         if(PlayerNum)
         {
             transform.position = new Vector3(-4, -3.565f, 0);
@@ -55,6 +61,7 @@ public class player : MonoBehaviour {
 
     public void rslash()
     {
+		Debug.Log ("rs");
         if (PlayerNum) GetComponent<SpriteRenderer>().sprite = PlayerSprite[14];
         else GetComponent<SpriteRenderer>().sprite = PlayerSprite[6];
         controller.radius = 0.53f;
@@ -64,7 +71,8 @@ public class player : MonoBehaviour {
         WalkReturn = false;
     }
     public void lslash()
-    {
+	{
+		Debug.Log ("Ls");
         if (PlayerNum) GetComponent<SpriteRenderer>().sprite = PlayerSprite[10];
         else GetComponent<SpriteRenderer>().sprite = PlayerSprite[3];
         controller.radius = 0.53f;
@@ -75,7 +83,8 @@ public class player : MonoBehaviour {
     }
 
     public void right()
-    {
+	{
+		Debug.Log ("r");
         if(!slashing)
         {
             if (PlayerNum) GetComponent<SpriteRenderer>().sprite = PlayerSprite[13];
@@ -89,7 +98,8 @@ public class player : MonoBehaviour {
     }
 
     public void left()
-    {
+	{
+		Debug.Log ("L");
         if(!slashing)
         {
             if (PlayerNum) GetComponent<SpriteRenderer>().sprite = PlayerSprite[9];
@@ -104,6 +114,8 @@ public class player : MonoBehaviour {
 
     public void stand()
     {
+		if (!GameManager.Instance.Gaming)
+			return;
         GetComponent<SpriteRenderer>().sprite = BasicSprite;
         controller.radius = 0.38f;
         controller.height = 1.47f;
@@ -242,11 +254,6 @@ public class player : MonoBehaviour {
         GameObject player2;
         if(PlayerNum) player2 = GameObject.FindWithTag("2p");
         else player2 = GameObject.FindWithTag("1p");
-        if (player2 == null)
-        {
-            Debug.Log("no player");
-            return;
-        }
         float i, j,abs,absi,absj;
         lr.enabled = false;
         i = transform.position.x - player2.transform.position.x;
@@ -254,9 +261,8 @@ public class player : MonoBehaviour {
         if (Mathf.Abs(i) < 1 && Mathf.Abs(j) < 0.81)
         {
             b = player2.GetComponent<CharController>();
-            if (i < 0 && !b.blockl) GetComponent<CharController>().Win();
-            else if (i > 0 && !b.blockr) GetComponent<CharController>().Win();
-            else if (i == 0) GetComponent<CharController>().Win();
+			if(!(GameManager.Instance.LastAttackPlayer == tag && player2.GetComponent<player>().attacking) && ((i < 0 && !b.blockl) || (i > 0 && !b.blockr) || (i == 0)))
+				GetComponent<CharController>().Win();
             ci = 0;
             GetComponent<CharController>().skystatus = 'c';
         }
@@ -280,6 +286,7 @@ public class player : MonoBehaviour {
             else player2 = GameObject.FindWithTag("1p");
             GetComponent<CharController>().skystatus = 'g';
             moveDirection = new Vector2(0, 0);
+			attacking = false;
         }
         //if (GetComponent<CharController>().hitname == "rightside" || GetComponent<CharController>().hitname == "leftside")
         //{

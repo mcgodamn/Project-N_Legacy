@@ -18,6 +18,7 @@ public class CharController : NetworkBehaviour
     public float gravity;
     public string hitname;
     GameObject player2;
+	int weapon;
     // Use this for initialization
     private void Awake()
     {
@@ -26,13 +27,16 @@ public class CharController : NetworkBehaviour
         controller = GetComponent<CharacterController>();
         if (isLocalPlayer && player.PlayerNum) GameManager.Instance.NowPlayer = 1;
         else if (isLocalPlayer && !player.PlayerNum) GameManager.Instance.NowPlayer = 2;
+		weapon = 0;
     }
     public void Start () {
-        GameManager.Instance.Gaming = true;
         bf = false; blockr = false; blockl = false;
         skystatus = 'g';
         walldirection = 0;
         moveDirection = new Vector2();
+		if (!Network.isServer)
+			CmdStand();
+		else RpcStand();
     }
 
     // Update is called once per frame
@@ -43,7 +47,10 @@ public class CharController : NetworkBehaviour
             if (tag == "1p" && !GameManager.Instance.player) return;
             if (player.PlayerNum) player2 = GameObject.FindWithTag("2p");
             else player2 = GameObject.FindWithTag("1p");
-            Physics.IgnoreCollision(player2.GetComponent<Collider>(), GetComponent<Collider>());
+			if (player2 != null) {
+				Physics.IgnoreCollision(player2.GetComponent<Collider>(), GetComponent<Collider>());
+				StartCoroutine (GameManager.Instance.StartCount());
+			}
         }
         if (!isLocalPlayer)
         {
@@ -79,7 +86,8 @@ public class CharController : NetworkBehaviour
             }
             if(bf) moveDirection.x = 0;
             moveDirection.y -= gravity * Time.deltaTime;
-            controller.Move(moveDirection * Time.deltaTime);
+			Debug.Log ("M");
+			if(GameManager.Instance.Gaming || !controller.isGrounded) controller.Move(moveDirection * Time.deltaTime);
         }
         else if (skystatus == 'w')
         {
@@ -89,9 +97,18 @@ public class CharController : NetworkBehaviour
         }
         else if (skystatus == 's')
         {
-            if (!Network.isServer)
-                CmdSlash();
-            else RpcSlash();
+			if (weapon == 0) {
+				if (!Network.isServer)
+					CmdSlash ();
+				else
+					RpcSlash ();
+			} 
+			else if (weapon == 1) {
+				if (!Network.isServer)
+					CmdSlash ();
+				else
+					RpcSlash ();
+			}
         }
         else if(skystatus == 'c')
         {
@@ -102,6 +119,10 @@ public class CharController : NetworkBehaviour
 
         if (GameManager.Instance.Gaming && Input.GetButtonDown("slash") && !blockr && !blockl && skystatus != 'c')
         {
+
+			if (!Network.isServer)
+				CmdChangeAttackP();
+			else RpcChangeAttackP();
             skystatus = 's';
         }
 
@@ -115,7 +136,7 @@ public class CharController : NetworkBehaviour
                 blockl = false;
                 if (!Network.isServer)
                     CmdBright();
-                else RpcBright(); ;
+                else RpcBright();
             }
             else if (Input.GetAxis("Horizontal") < 0)
             {
@@ -131,6 +152,10 @@ public class CharController : NetworkBehaviour
 
         if (GameManager.Instance.Gaming && Input.GetButtonUp("block") && isLocalPlayer)
         {
+			if (!Network.isServer)
+				CmdStand();
+			else
+				RpcStand();
             blockr = false;
             blockl = false;
             bf = false;
@@ -367,6 +392,17 @@ public class CharController : NetworkBehaviour
         player.slash();
     }
 
+	[Command]
+	public void CmdShuriken()
+	{
+		RpcShuriken();
+	}
+	[ClientRpc]
+	public void RpcShuriken()
+	{
+		player.slash();
+	}
+
     [Command]
     public void CmdClose()
     {
@@ -443,4 +479,17 @@ public class CharController : NetworkBehaviour
         GameManager.Instance.InGame.SetActive(true);
         GameManager.Instance.InGameText.GetComponent<Text>().text = str + " Win!!";
     }
+
+	[Command]
+	void CmdChangeAttackP()
+	{
+		RpcChangeAttackP();
+	}
+
+	[ClientRpc]
+	void RpcChangeAttackP()
+	{
+		player.attacking = true;
+		GameManager.Instance.LastAttackPlayer = tag;
+	}
 }
